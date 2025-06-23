@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 
 	"WizerGithubProofOfConcept/open_github_issue_by_app"
 )
@@ -113,7 +114,10 @@ func handleCodeScanningAlert(payload map[string]interface{}) error {
 	if !ok {
 		return errors.New("installation has no ID")
 	}
-	installationIdInt := installationId.(int64)
+	installationIdInt, err := strconv.ParseInt(installationId.(string), 10, 64)
+	if err != nil {
+		return errors.New("installation ID has to be numeric")
+	}
 	log.Printf("installation ID is %d", installationIdInt)
 
 	if alert != nil {
