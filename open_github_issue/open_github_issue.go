@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
@@ -13,19 +14,22 @@ const (
 	repo        = "WizerGithubProofOfConcept"
 	issueNumber = 1
 	commentText = "Hello from my Go app!"
-	accessToken = "ghp_..."
+	accessToken = "this-is-not-the-real-access-token"
 )
 
 func main() {
-	url := fmt.Sprintf("%s/repos/%s/%s/issues/%d/comments", githubAPI, owner, repo, issueNumber)
+	issue := map[string]string{
+		"title": "Automated security alert tracking",
+		"body":  "This issue was created automatically to collect security alert messages.",
+	}
 
-	payload := map[string]string{"body": commentText}
-	jsonData, err := json.Marshal(payload)
+	body, err := json.Marshal(issue)
 	if err != nil {
 		panic(err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues", owner, repo)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
 	if err != nil {
 		panic(err)
 	}
@@ -40,9 +44,12 @@ func main() {
 	}
 	defer resp.Body.Close()
 
+	respBody, _ := io.ReadAll(resp.Body)
+
 	if resp.StatusCode == http.StatusCreated {
-		fmt.Println("✅ Comment posted successfully!")
+		fmt.Println("✅ Issue created successfully!")
+		fmt.Println(string(respBody))
 	} else {
-		fmt.Printf("❌ Failed to post comment: %s\n", resp.Status)
+		fmt.Printf("❌ Failed to create issue: %s\nResponse body: %s\n", resp.Status, respBody)
 	}
 }
