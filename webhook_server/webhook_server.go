@@ -105,17 +105,17 @@ func handleCodeScanningAlert(payload map[string]interface{}) error {
 	if !ok {
 		return errors.New("alert has no tags")
 	}
-	tagsAsArray := tags.([]string)
+	tagsAsArray := tags.([]interface{})
 	firstCwe := findCWE(tagsAsArray)
 
 	log.Printf("alert %s of severity %s: %s", firstCwe, fullDescription, severityLevel)
 	return nil
 }
 
-func findCWE(strings []string) string {
+func findCWE(strings []interface{}) string {
 	re := regexp.MustCompile(`CWE-\d+`)
 	for _, s := range strings {
-		match := re.FindString(s)
+		match := re.FindString(s.(string))
 		if match != "" {
 			return match
 		}
