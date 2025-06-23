@@ -13,9 +13,25 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+
+	"WizerGithubProofOfConcept/open_github_issue_by_app"
 )
 
-var webhookSecret = "ArWm191218!"
+const webhookSecret = "ArWm191218!"
+
+const (
+	appID = 1426527
+	//installationID = 72684589
+	//repoOwner      = "ronmarom78"
+	//repoName       = "WizerGithubProofOfConcept"
+	privateKeyPath = "/Users/ronmarom/Wizer-Development/WizerGithubProofOfConcept/private-key.pem"
+)
+
+type Alert struct {
+	vulnId      string
+	description string
+	severity    string
+}
 
 func main() {
 	http.HandleFunc("/webhook", handleWebhook)
@@ -69,48 +85,90 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleCodeScanningAlert(payload map[string]interface{}) error {
+	alert, err := getAlertFromPayload(payload)
+	if err != nil {
+		return err
+	}
+
+	repository, ok := payload["repository"]
+	if !ok {
+		return errors.New("No repository found")
+	}
+	repositoryAsMap := repository.(map[string]interface{})
+
+	repoFullName, ok := repositoryAsMap["full_name"]
+	if !ok {
+		return errors.New("repository has no full name")
+	}
+	repoFullNameStr := repoFullName.(string)
+	log.Printf("repository name is %s", repoFullNameStr)
+
+	installation, ok := payload["installation"]
+	if !ok {
+		return errors.New("No installation found")
+	}
+	installationAsMap := installation.(map[string]interface{})
+
+	installationId, ok := installationAsMap["id"]
+	if !ok {
+		return errors.New("installation has no ID")
+	}
+	installationIdInt := installationId.(int64)
+	log.Printf("installation ID is %d", installationIdInt)
+
+	if alert != nil {
+		log.Printf("alert %s of severity %s: %s", alert.vulnId, alert.severity, alert.description)
+	}
+
+	open_github_issue_by_app.OpenGithubIssueByApp(appID, privateKeyPath, installationIdInt, repoFullNameStr)
+
+	return nil
+}
+
+func getAlertFromPayload(payload map[string]interface{}) (*Alert, error) {
 	alert, ok := payload["alert"]
 	if !ok {
-		return errors.New("No alert found")
+		return nil, errors.New("No alert found")
 	}
 
 	alertAsMap := alert.(map[string]interface{})
 	state, ok := alertAsMap["state"]
 	if !ok {
-		return errors.New("alert has no status")
+		return nil, errors.New("alert has no status")
 	}
 
 	if state != "open" {
-		return nil
+		return nil, nil
 	}
 
 	rule, ok := alertAsMap["rule"]
 	if !ok {
-		return errors.New("alert has no rule")
+		return nil, errors.New("alert has no rule")
 	}
 	ruleAsMap := rule.(map[string]interface{})
 
-	fullDescription := ""
-	fullDescriptionObj, ok := ruleAsMap["full_description"]
-	if ok {
-		fullDescription = fullDescriptionObj.(string)
+	result := Alert{
+		severity: "critical",
 	}
 
-	severityLevel := "critical"
+	fullDescriptionObj, ok := ruleAsMap["full_description"]
+	if ok {
+		result.description = fullDescriptionObj.(string)
+	}
+
 	severityLevelObj, ok := ruleAsMap["security_severity_level"]
 	if ok {
-		severityLevel = severityLevelObj.(string)
+		result.severity = severityLevelObj.(string)
 	}
 
 	tags, ok := ruleAsMap["tags"]
 	if !ok {
-		return errors.New("alert has no tags")
+		return nil, errors.New("alert has no tags")
 	}
 	tagsAsArray := tags.([]interface{})
-	firstCwe := findCWE(tagsAsArray)
+	result.vulnId = findCWE(tagsAsArray)
 
-	log.Printf("alert %s of severity %s: %s", firstCwe, severityLevel, fullDescription)
-	return nil
+	return &result, nil
 }
 
 func findCWE(strings []interface{}) string {

@@ -1,4 +1,4 @@
-package main
+package open_github_issue_by_app
 
 import (
 	"bytes"
@@ -23,7 +23,10 @@ const (
 )
 
 func main() {
-	// Load your private key
+	OpenGithubIssueByApp(appID, privateKeyPath, installationID, fmt.Sprintf("%s/%s", repoOwner, repoName))
+}
+
+func OpenGithubIssueByApp(appID int64, privateKeyPath string, installationID int64, repoFullPath string) {
 	keyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		log.Fatalf("error reading private key: %v", err)
@@ -33,14 +36,11 @@ func main() {
 		log.Fatalf("error parsing private key: %v", err)
 	}
 
-	// Step 1: Create a JWT
 	jwtToken := generateJWT(appID, privateKey)
 
-	// Step 2: Exchange JWT for installation token
 	installationToken := getInstallationToken(jwtToken, installationID)
 
-	// Step 3: Use installation token to create an issue
-	createIssue(installationToken)
+	createIssue(installationToken, repoFullPath)
 }
 
 func generateJWT(appID int64, key *rsa.PrivateKey) string {
@@ -88,8 +88,8 @@ func getInstallationToken(jwtToken string, installationID int64) string {
 	return result.Token
 }
 
-func createIssue(token string) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/%s/issues", repoOwner, repoName)
+func createIssue(token string, repoFullPath string) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/issues", repoFullPath)
 
 	issue := map[string]string{
 		"title": "Automated security alert tracking",
