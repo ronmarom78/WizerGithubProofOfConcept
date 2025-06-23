@@ -56,11 +56,10 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("Received event: %s", event)
-	//log.Printf("Payload: %+v", payload)
 
-	// You can filter events here:
 	if event == "code_scanning_alert" {
-		handleCodeScanningAlert(payload)
+		err = handleCodeScanningAlert(payload)
+		log.Printf("%e", err)
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -113,7 +112,7 @@ func handleCodeScanningAlert(payload map[string]interface{}) error {
 }
 
 func findCWE(strings []interface{}) string {
-	re := regexp.MustCompile(`CWE-\d+`)
+	re := regexp.MustCompile(`cwe-\d+`)
 	for _, s := range strings {
 		match := re.FindString(s.(string))
 		if match != "" {
