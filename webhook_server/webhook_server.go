@@ -109,7 +109,7 @@ func handleCodeScanningAlert(payload map[string]interface{}) error {
 	tagsAsArray := tags.([]interface{})
 	firstCwe := findCWE(tagsAsArray)
 
-	log.Printf("alert %s of severity %s: %s", firstCwe, fullDescription, severityLevel)
+	log.Printf("alert %s of severity %s: %s", firstCwe, severityLevel, fullDescription)
 	return nil
 }
 
