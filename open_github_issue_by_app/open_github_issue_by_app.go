@@ -26,7 +26,7 @@ func main() {
 	OpenGithubIssueByApp(appID, privateKeyPath, installationID, fmt.Sprintf("%s/%s", repoOwner, repoName))
 }
 
-func OpenGithubIssueByApp(appID int64, privateKeyPath string, installationID int64, repoFullPath string) {
+func OpenGithubIssueByApp(appID int64, privateKeyPath string, installationID float64, repoFullPath string) {
 	keyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		log.Fatalf("error reading private key: %v", err)
@@ -59,8 +59,8 @@ func generateJWT(appID int64, key *rsa.PrivateKey) string {
 	return signedToken
 }
 
-func getInstallationToken(jwtToken string, installationID int64) string {
-	url := fmt.Sprintf("https://api.github.com/app/installations/%d/access_tokens", installationID)
+func getInstallationToken(jwtToken string, installationID float64) string {
+	url := fmt.Sprintf("https://api.github.com/app/installations/%f/access_tokens", installationID)
 	req, err := http.NewRequest("POST", url, nil)
 	if err != nil {
 		log.Fatalf("failed to create token request: %v", err)

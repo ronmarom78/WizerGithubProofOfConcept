@@ -1,6 +1,7 @@
 package main
 
 import (
+	"WizerGithubProofOfConcept/open_github_issue_by_app"
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -13,9 +14,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strconv"
-
-	"WizerGithubProofOfConcept/open_github_issue_by_app"
 )
 
 const webhookSecret = "ArWm191218!"
@@ -115,17 +113,14 @@ func handleCodeScanningAlert(payload map[string]interface{}) error {
 		return errors.New("installation has no ID")
 	}
 	log.Printf("Hey")
-	installationIdInt, err := strconv.ParseInt(installationId.(string), 10, 64)
-	if err != nil {
-		return errors.New("installation ID has to be numeric")
-	}
-	log.Printf("installation ID is %d", installationIdInt)
+	installationIdFloat := installationId.(float64)
+	log.Printf("installation ID is %f", installationIdFloat)
 
 	if alert != nil {
 		log.Printf("alert %s of severity %s: %s", alert.vulnId, alert.severity, alert.description)
 	}
 
-	open_github_issue_by_app.OpenGithubIssueByApp(appID, privateKeyPath, installationIdInt, repoFullNameStr)
+	open_github_issue_by_app.OpenGithubIssueByApp(appID, privateKeyPath, installationIdFloat, repoFullNameStr)
 
 	return nil
 }
