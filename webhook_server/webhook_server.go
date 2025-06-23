@@ -6,11 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"regexp"
 )
 
 var webhookSecret = "ArWm191218!"
@@ -58,14 +60,67 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	// You can filter events here:
 	if event == "code_scanning_alert" {
-		alert := payload["alert"]
-		if alert != nil {
-			log.Printf("Received CodeQL alert: %+v", alert)
-		}
+		handleCodeScanningAlert(payload)
 	}
 
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "ok")
+}
+
+func handleCodeScanningAlert(payload map[string]interface{}) error {
+	alert, ok := payload["alert"]
+	if !ok {
+		return errors.New("No alert found")
+	}
+
+	alertAsMap := alert.(map[string]interface{})
+	state, ok := alertAsMap["state"]
+	if !ok {
+		return errors.New("alert has no status")
+	}
+
+	if state != "open" {
+		return nil
+	}
+
+	rule, ok := alertAsMap["rule"]
+	if !ok {
+		return errors.New("alert has no rule")
+	}
+	ruleAsMap := rule.(map[string]interface{})
+
+	fullDescription := ""
+	fullDescriptionObj, ok := ruleAsMap["full_description"]
+	if ok {
+		fullDescription = fullDescriptionObj.(string)
+	}
+
+	severityLevel := "critical"
+	severityLevelObj, ok := ruleAsMap["security_severity_level"]
+	if ok {
+		severityLevel = severityLevelObj.(string)
+	}
+
+	tags, ok := ruleAsMap["tags"]
+	if !ok {
+		return errors.New("alert has no tags")
+	}
+	tagsAsArray := tags.([]string)
+	firstCwe := findCWE(tagsAsArray)
+
+	log.Printf("alert %s of severity %s: %s", firstCwe, fullDescription, severityLevel)
+	return nil
+}
+
+func findCWE(strings []string) string {
+	re := regexp.MustCompile(`CWE-\d+`)
+	for _, s := range strings {
+		match := re.FindString(s)
+		if match != "" {
+			return match
+		}
+	}
+	return ""
 }
 
 func validateSignature(signature string, body []byte) bool {
