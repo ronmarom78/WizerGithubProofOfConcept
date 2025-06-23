@@ -59,7 +59,9 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if event == "code_scanning_alert" {
 		err = handleCodeScanningAlert(payload)
-		log.Printf("%e", err)
+		if err != nil {
+			log.Printf("%e", err)
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
