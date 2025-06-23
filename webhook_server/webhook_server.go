@@ -2,6 +2,7 @@ package main
 
 import (
 	"WizerGithubProofOfConcept/open_github_issue_by_app"
+	"WizerGithubProofOfConcept/wizer_video_by_cwe"
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -19,10 +20,7 @@ import (
 const webhookSecret = "ArWm191218!"
 
 const (
-	appID = 1426527
-	//installationID = 72684589
-	//repoOwner      = "ronmarom78"
-	//repoName       = "WizerGithubProofOfConcept"
+	appID          = 1426527
 	privateKeyPath = "/Users/ronmarom/Wizer-Development/WizerGithubProofOfConcept/private-key.pem"
 )
 
@@ -120,7 +118,11 @@ func handleCodeScanningAlert(payload map[string]interface{}) error {
 		log.Printf("alert %s of severity %s: %s", alert.vulnId, alert.severity, alert.description)
 	}
 
-	open_github_issue_by_app.OpenGithubIssueByApp(appID, privateKeyPath, installationIdFloat, repoFullNameStr)
+	wizerVideoUrl := wizer_video_by_cwe.GetWizerVideoByCWE(alert.vulnId)
+
+	open_github_issue_by_app.OpenGithubIssueByApp(
+		appID, privateKeyPath, installationIdFloat, repoFullNameStr, alert.description, wizerVideoUrl,
+	)
 
 	return nil
 }

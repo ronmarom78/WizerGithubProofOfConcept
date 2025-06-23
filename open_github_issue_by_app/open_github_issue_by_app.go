@@ -14,19 +14,14 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-const (
-	appID          = 1426527
-	installationID = 72684589
-	repoOwner      = "ronmarom78"
-	repoName       = "WizerGithubProofOfConcept"
-	privateKeyPath = "/Users/ronmarom/Wizer-Development/WizerGithubProofOfConcept/private-key.pem"
-)
-
-func main() {
-	OpenGithubIssueByApp(appID, privateKeyPath, installationID, fmt.Sprintf("%s/%s", repoOwner, repoName))
-}
-
-func OpenGithubIssueByApp(appID int64, privateKeyPath string, installationID float64, repoFullPath string) {
+func OpenGithubIssueByApp(
+	appID int64,
+	privateKeyPath string,
+	installationID float64,
+	repoFullPath string,
+	alertDescription string,
+	wizerUrl string,
+) {
 	keyData, err := os.ReadFile(privateKeyPath)
 	if err != nil {
 		log.Fatalf("error reading private key: %v", err)
@@ -40,7 +35,7 @@ func OpenGithubIssueByApp(appID int64, privateKeyPath string, installationID flo
 
 	installationToken := getInstallationToken(jwtToken, installationID)
 
-	createIssue(installationToken, repoFullPath)
+	createIssue(installationToken, repoFullPath, alertDescription, wizerUrl)
 }
 
 func generateJWT(appID int64, key *rsa.PrivateKey) string {
@@ -88,12 +83,18 @@ func getInstallationToken(jwtToken string, installationID float64) string {
 	return result.Token
 }
 
-func createIssue(token string, repoFullPath string) {
+func createIssue(token string, repoFullPath string, alertDescription string, wizerUrl string) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/issues", repoFullPath)
 
+	issueBody := fmt.Sprintf(
+		"We have noticed that you have a code security vulnerability: %s\nFor your convenience, Wizer training has a video about how to avoid such issues at %s",
+		alertDescription,
+		wizerUrl,
+	)
+
 	issue := map[string]string{
-		"title": "Automated security alert tracking",
-		"body":  "This issue was created by a GitHub App.",
+		"title": "Security Awareness Training available for you!",
+		"body":  issueBody,
 	}
 	body, _ := json.Marshal(issue)
 
