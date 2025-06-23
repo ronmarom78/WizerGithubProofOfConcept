@@ -114,6 +114,7 @@ func handleCodeScanningAlert(payload map[string]interface{}) error {
 	if !ok {
 		return errors.New("installation has no ID")
 	}
+	log.Printf("Hey")
 	installationIdInt, err := strconv.ParseInt(installationId.(string), 10, 64)
 	if err != nil {
 		return errors.New("installation ID has to be numeric")
