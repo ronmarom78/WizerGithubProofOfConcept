@@ -1,8 +1,7 @@
 package main
 
 import (
-	"WizerGithubProofOfConcept/open_github_issue_by_app"
-	"WizerGithubProofOfConcept/wizer_video_by_cwe"
+	"WizerGithubProofOfConcept/github_client"
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -19,11 +18,6 @@ import (
 
 const webhookSecret = "ArWm191218!"
 
-const (
-	appID          = 1426527
-	privateKeyPath = "/Users/ronmarom/Wizer-Development/WizerGithubProofOfConcept/private-key.pem"
-)
-
 type Alert struct {
 	vulnId      string
 	description string
@@ -31,22 +25,28 @@ type Alert struct {
 }
 
 type CheckRunEvent struct {
-	Action   string `json:"action"`
-	CheckRun struct {
-		Name       string `json:"name"`
-		Conclusion string `json:"conclusion"` // 'success', 'failure', 'neutral'
-		Status     string `json:"status"`     // 'queued', 'in_progress', 'completed'
-		Output     struct {
-			Summary string `json:"summary"`
-		} `json:"output"`
-		DetailsURL string `json:"details_url"`
-	} `json:"check_run"`
+	Action     string          `json:"action"`
+	CheckRun   CheckRunPayload `json:"check_run"`
 	Repository struct {
 		FullName string `json:"full_name"`
 	} `json:"repository"`
 	Installation struct {
 		ID float64 `json:"id"`
 	} `json:"installation"`
+}
+
+type CheckRunPayload struct {
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	Output     struct {
+		Summary string `json:"summary"`
+	} `json:"output"`
+	CheckSuite struct {
+		PullRequests []struct {
+			Number int `json:"number"`
+		} `json:"pull_requests"`
+	} `json:"check_suite"`
 }
 
 func main() {
@@ -87,75 +87,112 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		var event CheckRunEvent
 		err = json.NewDecoder(r.Body).Decode(&event)
 		if err != nil {
-			panic(err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		log.Printf("Check Run eventType")
-	}
+		if event.CheckRun.Status != "completed" {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		if len(event.CheckRun.CheckSuite.PullRequests) == 0 {
+			log.Println("No pull request associated with this check run.")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		prNumber := event.CheckRun.CheckSuite.PullRequests[0].Number
 
-	var payload map[string]interface{}
-	if err := json.Unmarshal(body, &payload); err != nil {
-		http.Error(w, "invalid JSON", http.StatusBadRequest)
+		installationToken := github_client.GetInstallationToken(event.Installation.ID)
+
+		alerts, err := github_client.FetchAlertsForPR(event.Repository.FullName, installationToken, prNumber)
+		if err != nil {
+			log.Println("Error fetching alerts")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		for _, alert := range alerts {
+			fmt.Println("------------------------------------------------")
+			fmt.Printf("Severity:    %s\n", alert.Rule.Severity)
+			fmt.Printf("Description: %s\n", alert.Rule.Description)
+			fmt.Printf("Message:     %s\n", alert.Message.Text)
+			if alert.Cve != "" {
+				fmt.Printf("CVE:         %s\n", alert.Cve)
+			}
+			if alert.Cwe != "" {
+				fmt.Printf("CWE:         %s\n", alert.Cwe)
+			}
+			if len(alert.Locations) > 0 {
+				loc := alert.Locations[0]
+				fmt.Printf("File:        %s:%d:%d\n", loc.Path, loc.Start.Line, loc.Start.Column)
+			}
+		}
+
+		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	if eventType == "code_scanning_alert" {
-		err = handleCodeScanningAlert(payload)
-		if err != nil {
-			log.Printf("%e", err)
-		}
-	}
-
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "ok")
+	//var payload map[string]interface{}
+	//if err := json.Unmarshal(body, &payload); err != nil {
+	//	http.Error(w, "invalid JSON", http.StatusBadRequest)
+	//	return
+	//}
+	//
+	//if eventType == "code_scanning_alert" {
+	//	err = handleCodeScanningAlert(payload)
+	//	if err != nil {
+	//		log.Printf("%e", err)
+	//	}
+	//}
+	//
+	//w.WriteHeader(http.StatusOK)
+	//fmt.Fprintln(w, "ok")
 }
 
-func handleCodeScanningAlert(payload map[string]interface{}) error {
-	alert, err := getAlertFromPayload(payload)
-	if err != nil {
-		return err
-	}
-
-	repository, ok := payload["repository"]
-	if !ok {
-		return errors.New("No repository found")
-	}
-	repositoryAsMap := repository.(map[string]interface{})
-
-	repoFullName, ok := repositoryAsMap["full_name"]
-	if !ok {
-		return errors.New("repository has no full name")
-	}
-	repoFullNameStr := repoFullName.(string)
-	log.Printf("repository name is %s", repoFullNameStr)
-
-	installation, ok := payload["installation"]
-	if !ok {
-		return errors.New("No installation found")
-	}
-	installationAsMap := installation.(map[string]interface{})
-
-	installationId, ok := installationAsMap["id"]
-	if !ok {
-		return errors.New("installation has no ID")
-	}
-	log.Printf("Hey")
-	installationIdFloat := installationId.(float64)
-	log.Printf("installation ID is %f", installationIdFloat)
-
-	if alert != nil {
-		log.Printf("alert %s of severity %s: %s", alert.vulnId, alert.severity, alert.description)
-	}
-
-	wizerVideoUrl := wizer_video_by_cwe.GetWizerVideoByCWE(alert.vulnId)
-
-	open_github_issue_by_app.OpenGithubIssueByApp(
-		appID, privateKeyPath, installationIdFloat, repoFullNameStr, alert.description, wizerVideoUrl,
-	)
-
-	return nil
-}
+//func handleCodeScanningAlert(payload map[string]interface{}) error {
+//	alert, err := getAlertFromPayload(payload)
+//	if err != nil {
+//		return err
+//	}
+//
+//	repository, ok := payload["repository"]
+//	if !ok {
+//		return errors.New("No repository found")
+//	}
+//	repositoryAsMap := repository.(map[string]interface{})
+//
+//	repoFullName, ok := repositoryAsMap["full_name"]
+//	if !ok {
+//		return errors.New("repository has no full name")
+//	}
+//	repoFullNameStr := repoFullName.(string)
+//	log.Printf("repository name is %s", repoFullNameStr)
+//
+//	installation, ok := payload["installation"]
+//	if !ok {
+//		return errors.New("No installation found")
+//	}
+//	installationAsMap := installation.(map[string]interface{})
+//
+//	installationId, ok := installationAsMap["id"]
+//	if !ok {
+//		return errors.New("installation has no ID")
+//	}
+//	log.Printf("Hey")
+//	installationIdFloat := installationId.(float64)
+//	log.Printf("installation ID is %f", installationIdFloat)
+//
+//	if alert != nil {
+//		log.Printf("alert %s of severity %s: %s", alert.vulnId, alert.severity, alert.description)
+//	}
+//
+//	wizerVideoUrl := wizer_video_by_cwe.GetWizerVideoByCWE(alert.vulnId)
+//
+//	open_github_issue_by_app.OpenGithubIssueByApp(
+//		appID, privateKeyPath, installationIdFloat, repoFullNameStr, alert.description, wizerVideoUrl,
+//	)
+//
+//	return nil
+//}
 
 func getAlertFromPayload(payload map[string]interface{}) (*Alert, error) {
 	alert, ok := payload["alert"]
