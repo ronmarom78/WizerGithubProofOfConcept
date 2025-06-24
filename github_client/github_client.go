@@ -37,11 +37,23 @@ func FetchAlertsForBranch(repoFullName, installationToken string, branchName str
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
-	var alerts []github_model.Alert
-	if err := json.Unmarshal(body, &alerts); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Read error:", err)
 		return nil, err
 	}
+
+	var data map[string]interface{}
+	if err := json.Unmarshal(body, &data); err != nil {
+		fmt.Println("Unmarshal error:", err)
+		return nil, err
+	}
+
+	//body, _ := io.ReadAll(resp.Body)
+	var alerts []github_model.Alert
+	//if err := json.Unmarshal(body, &alerts); err != nil {
+	//	return nil, err
+	//}
 
 	return alerts, nil
 }
