@@ -1,12 +1,14 @@
 package main
 
 import (
+	"WizerGithubProofOfConcept/github_client"
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -91,6 +93,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		var event CheckRunEvent
 		err = json.NewDecoder(r.Body).Decode(&event)
 		if err != nil {
+			log.Printf("%v", err)
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
@@ -98,7 +101,24 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			return
 		}
-		log.Printf("Check run ID: %d", event.CheckRun.ID)
+
+		installationToken := github_client.GetInstallationToken(event.Installation.ID)
+
+		annotations, err := github_client.GetAnnotations(
+			event.Repository.FullName, installationToken, event.CheckRun.ID,
+		)
+		if err != nil {
+			log.Println("Error fetching annotations: %v", err)
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		for _, annotation := range annotations {
+			fmt.Println("------------------------------------------------")
+			fmt.Printf("Level:    	%s\n", annotation.AnnotationLevel)
+			fmt.Printf("Title:		%s\n", annotation.Title)
+		}
+
 		//if len(event.CheckRun.CheckSuite.PullRequests) == 0 {
 		//	log.Println("No pull request associated with this check run.")
 		//	w.WriteHeader(http.StatusOK)
@@ -106,7 +126,6 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		//}
 		//prNumber := event.CheckRun.CheckSuite.PullRequests[0].Number
 		//
-		//installationToken := github_client.GetInstallationToken(event.Installation.ID)
 		//
 		//branchName, err := github_client.GetBranchName(event.Repository.FullName, installationToken, prNumber)
 		//if err != nil {

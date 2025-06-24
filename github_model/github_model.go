@@ -21,6 +21,19 @@ type Alert struct {
 	State string `json:"state"`
 }
 
+type Annotation struct {
+	Path            string  `json:"path"`
+	BlobHref        string  `json:"blob_href"`
+	StartLine       int     `json:"start_line"`
+	StartColumn     int     `json:"start_column"`
+	EndLine         int     `json:"end_line"`
+	EndColumn       int     `json:"end_column"`
+	AnnotationLevel string  `json:"annotation_level"`
+	Title           string  `json:"title"`
+	Message         string  `json:"message"`
+	RawDetails      *string `json:"raw_details"` // Use pointer to allow null
+}
+
 type PullRequestInfo struct {
 	Head struct {
 		Ref string `json:"ref"` // branch name

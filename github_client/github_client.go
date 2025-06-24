@@ -58,6 +58,34 @@ func FetchAlertsForBranch(repoFullName, installationToken string, branchName str
 	return alerts, nil
 }
 
+func GetAnnotations(repoFullName, installationToken string, checkRunId int64) ([]github_model.Annotation, error) {
+	url := fmt.Sprintf(
+		"https://api.github.com/repos/%s/check-runs/%d/annotations", repoFullName, checkRunId,
+	)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Authorization", "Bearer "+installationToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	var annotations []github_model.Annotation
+	if err := json.Unmarshal(body, &annotations); err != nil {
+		return nil, err
+	}
+
+	return annotations, nil
+}
+
 func GetBranchName(repoFullName, installationToken string, prNumber int) (string, error) {
 	url := fmt.Sprintf("https://api.github.com/repos/%s/pulls/%d", repoFullName, prNumber)
 
