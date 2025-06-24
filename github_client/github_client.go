@@ -20,7 +20,7 @@ const (
 
 func FetchAlertsForBranch(repoFullName, installationToken string, branchName string) ([]github_model.Alert, error) {
 	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/code-scanning/alerts?ref=refs/heads/%s", repoFullName, branchName,
+		"https://api.github.com/repos/%s/code-scanning/alerts", repoFullName,
 	)
 
 	req, err := http.NewRequest("GET", url, nil)
