@@ -34,6 +34,32 @@ type Annotation struct {
 	RawDetails      *string `json:"raw_details"` // Use pointer to allow null
 }
 
+type CheckRunEvent struct {
+	Action     string          `json:"action"`
+	CheckRun   CheckRunPayload `json:"check_run"`
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+	Installation struct {
+		ID float64 `json:"id"`
+	} `json:"installation"`
+}
+
+type CheckRunPayload struct {
+	ID         int64  `json:"id"`
+	Name       string `json:"name"`
+	Status     string `json:"status"`
+	Conclusion string `json:"conclusion"`
+	Output     struct {
+		Summary string `json:"summary"`
+	} `json:"output"`
+	CheckSuite struct {
+		PullRequests []struct {
+			Number int `json:"number"`
+		} `json:"pull_requests"`
+	} `json:"check_suite"`
+}
+
 type CommentBody struct {
 	Body string `json:"body"`
 }

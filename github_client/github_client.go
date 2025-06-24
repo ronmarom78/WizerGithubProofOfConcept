@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"crypto/rsa"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/golang-jwt/jwt/v5"
 	"io"
@@ -19,44 +20,44 @@ const (
 	privateKeyPath = "/Users/ronmarom/Wizer-Development/WizerGithubProofOfConcept/private-key.pem"
 )
 
-func FetchAlertsForBranch(repoFullName, installationToken string, branchName string) ([]github_model.Alert, error) {
-	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/code-scanning/alerts", repoFullName,
-	)
+func CreateIssue(repoFullName, installationToken, message string) error {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/issues", repoFullName)
 
-	req, err := http.NewRequest("GET", url, nil)
+	issue := map[string]string{
+		"title": "Security Awareness Training available for you!",
+		"body":  message,
+	}
+	body, err := json.Marshal(issue)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
 	req.Header.Set("Authorization", "Bearer "+installationToken)
 	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("Read error:", err)
-		return nil, err
+		return err
 	}
-
-	var data []interface{}
-	if err := json.Unmarshal(body, &data); err != nil {
-		fmt.Println("Unmarshal error:", err)
-		return nil, err
+	if resp.StatusCode == http.StatusCreated {
+		log.Println("✅ Issue created successfully!")
+		log.Println(string(respBody))
+	} else {
+		log.Fatalf("❌ GitHub API error (%d):\n%s", resp.StatusCode, string(body))
+		return errors.New(fmt.Sprintf("❌ GitHub API error (%d):\n%s", resp.StatusCode, string(body)))
 	}
-
-	//body, _ := io.ReadAll(resp.Body)
-	var alerts []github_model.Alert
-	//if err := json.Unmarshal(body, &alerts); err != nil {
-	//	return nil, err
-	//}
-
-	return alerts, nil
+	return nil
 }
 
 func GetAnnotations(repoFullName, installationToken string, checkRunId int64) ([]github_model.Annotation, error) {
@@ -85,32 +86,6 @@ func GetAnnotations(repoFullName, installationToken string, checkRunId int64) ([
 	}
 
 	return annotations, nil
-}
-
-func GetBranchName(repoFullName, installationToken string, prNumber int) (string, error) {
-	url := fmt.Sprintf("https://api.github.com/repos/%s/pulls/%d", repoFullName, prNumber)
-
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return "", err
-	}
-	req.Header.Set("Authorization", "Bearer "+installationToken)
-	req.Header.Set("Accept", "application/vnd.github+json")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, _ := io.ReadAll(resp.Body)
-
-	var prInfo github_model.PullRequestInfo
-	if err := json.Unmarshal(body, &prInfo); err != nil {
-		return "", err
-	}
-
-	return prInfo.Head.Ref, nil
 }
 
 func GetInstallationToken(installationID float64) string {
@@ -176,7 +151,7 @@ func PostComment(repoFullName, installationToken string, prNumber int, message s
 	}
 	defer resp.Body.Close()
 
-	body, _ := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if resp.StatusCode != 201 {
 		log.Fatalf("❌ GitHub API error (%d):\n%s", resp.StatusCode, string(body))
 		return 0, err
