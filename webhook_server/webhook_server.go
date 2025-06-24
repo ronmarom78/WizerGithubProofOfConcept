@@ -45,7 +45,7 @@ type CheckRunEvent struct {
 		FullName string `json:"full_name"`
 	} `json:"repository"`
 	Installation struct {
-		ID string `json:"id"`
+		ID float64 `json:"id"`
 	} `json:"installation"`
 }
 
