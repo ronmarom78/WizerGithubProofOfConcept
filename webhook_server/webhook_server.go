@@ -70,6 +70,10 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("Received event: %s", event)
 
+	if event == "check_run" {
+		log.Printf("Check Run event")
+	}
+
 	if event == "code_scanning_alert" {
 		err = handleCodeScanningAlert(payload)
 		if err != nil {
