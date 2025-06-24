@@ -14,6 +14,10 @@ var WizerDataByGithubString = map[string]WizerPresentation{
 		VulnName: "Path Traversal",
 		WizerUrl: "https://www.youtube.com/watch?v=Cl0TVshoSPc",
 	},
+	"Reflected cross-site scripting": {
+		VulnName: "Cross-Site Scripting",
+		WizerUrl: "https://www.youtube.com/watch?v=Cl0TVshoSPc",
+	},
 }
 
 func GetWizerVideoByCWE(githubString string) *WizerPresentation {
