@@ -30,6 +30,25 @@ type Alert struct {
 	severity    string
 }
 
+type CheckRunEvent struct {
+	Action   string `json:"action"`
+	CheckRun struct {
+		Name       string `json:"name"`
+		Conclusion string `json:"conclusion"` // 'success', 'failure', 'neutral'
+		Status     string `json:"status"`     // 'queued', 'in_progress', 'completed'
+		Output     struct {
+			Summary string `json:"summary"`
+		} `json:"output"`
+		DetailsURL string `json:"details_url"`
+	} `json:"check_run"`
+	Repository struct {
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+	Installation struct {
+		ID string `json:"id"`
+	} `json:"installation"`
+}
+
 func main() {
 	http.HandleFunc("/webhook", handleWebhook)
 
@@ -56,10 +75,21 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	event := r.Header.Get("X-GitHub-Event")
-	if event == "" {
-		http.Error(w, "missing event header", http.StatusBadRequest)
+	eventType := r.Header.Get("X-GitHub-Event")
+	if eventType == "" {
+		http.Error(w, "missing eventType header", http.StatusBadRequest)
 		return
+	}
+
+	log.Printf("Received eventType: %s", eventType)
+
+	if eventType == "check_run" {
+		var event CheckRunEvent
+		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Printf("Check Run eventType")
 	}
 
 	var payload map[string]interface{}
@@ -68,13 +98,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("Received event: %s", event)
-
-	if event == "check_run" {
-		log.Printf("Check Run event")
-	}
-
-	if event == "code_scanning_alert" {
+	if eventType == "code_scanning_alert" {
 		err = handleCodeScanningAlert(payload)
 		if err != nil {
 			log.Printf("%e", err)
