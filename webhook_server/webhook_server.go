@@ -103,7 +103,14 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 		installationToken := github_client.GetInstallationToken(event.Installation.ID)
 
-		alerts, err := github_client.FetchAlertsForPR(event.Repository.FullName, installationToken, prNumber)
+		branchName, err := github_client.GetBranchName(event.Repository.FullName, installationToken, prNumber)
+		if err != nil {
+			log.Println("Error fetching branch name")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+
+		alerts, err := github_client.FetchAlertsForBranch(event.Repository.FullName, installationToken, branchName)
 		if err != nil {
 			log.Println("Error fetching alerts")
 			w.WriteHeader(http.StatusOK)

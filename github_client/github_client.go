@@ -18,11 +18,9 @@ const (
 	privateKeyPath = "/Users/ronmarom/Wizer-Development/WizerGithubProofOfConcept/private-key.pem"
 )
 
-func FetchAlertsForPR(repoFullName, installationToken string, prNumber int) ([]github_model.Alert, error) {
+func FetchAlertsForBranch(repoFullName, installationToken string, branchName string) ([]github_model.Alert, error) {
 	url := fmt.Sprintf(
-		"https://api.github.com/repos/%s/code-scanning/alerts?ref=refs/pull/%d/head",
-		repoFullName,
-		prNumber,
+		"https://api.github.com/repos/%s/code-scanning/alerts?ref=refs/heads/%s", repoFullName, branchName,
 	)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -46,6 +44,32 @@ func FetchAlertsForPR(repoFullName, installationToken string, prNumber int) ([]g
 	}
 
 	return alerts, nil
+}
+
+func GetBranchName(repoFullName, installationToken string, prNumber int) (string, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/pulls/%d", repoFullName, prNumber)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+	req.Header.Set("Authorization", "Bearer "+installationToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+
+	var prInfo github_model.PullRequestInfo
+	if err := json.Unmarshal(body, &prInfo); err != nil {
+		return "", err
+	}
+
+	return prInfo.Head.Ref, nil
 }
 
 func GetInstallationToken(installationID float64) string {

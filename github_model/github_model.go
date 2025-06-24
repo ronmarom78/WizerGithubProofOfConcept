@@ -20,3 +20,9 @@ type Alert struct {
 	Cwe   string `json:"cwe"` // Optional
 	State string `json:"state"`
 }
+
+type PullRequestInfo struct {
+	Head struct {
+		Ref string `json:"ref"` // branch name
+	} `json:"head"`
+}
