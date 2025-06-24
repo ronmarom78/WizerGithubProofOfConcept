@@ -34,6 +34,14 @@ type Annotation struct {
 	RawDetails      *string `json:"raw_details"` // Use pointer to allow null
 }
 
+type CommentBody struct {
+	Body string `json:"body"`
+}
+
+type CommentResponse struct {
+	ID int64 `json:"id"`
+}
+
 type PullRequestInfo struct {
 	Head struct {
 		Ref string `json:"ref"` // branch name

@@ -2,6 +2,7 @@ package main
 
 import (
 	"WizerGithubProofOfConcept/github_client"
+	"WizerGithubProofOfConcept/wizer_video_resolver"
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
@@ -113,10 +114,25 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		if len(event.CheckRun.CheckSuite.PullRequests) == 0 {
+			log.Println("No pull request associated with this check run.")
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		prNumber := event.CheckRun.CheckSuite.PullRequests[0].Number
+
 		for _, annotation := range annotations {
-			fmt.Println("------------------------------------------------")
-			fmt.Printf("Level:    	%s\n", annotation.AnnotationLevel)
-			fmt.Printf("Title:		%s\n", annotation.Title)
+			wizerData := wizer_video_resolver.GetWizerVideoByCWE(annotation.Title)
+			if wizerData == nil {
+				log.Printf("No Wizer video available for annotation \"%s\"", annotation.Title)
+				continue
+			}
+			message := fmt.Sprintf(
+				"We have noticed that you have a code security vulnerability: %s\nFor your convenience, Wizer training has a video about how to avoid such issues at %s",
+				wizerData.VulnName,
+				wizerData.WizerUrl,
+			)
+			github_client.PostComment(event.Repository.FullName, installationToken, prNumber, message)
 		}
 
 		//if len(event.CheckRun.CheckSuite.PullRequests) == 0 {
@@ -216,7 +232,7 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 //		log.Printf("alert %s of severity %s: %s", alert.vulnId, alert.severity, alert.description)
 //	}
 //
-//	wizerVideoUrl := wizer_video_by_cwe.GetWizerVideoByCWE(alert.vulnId)
+//	wizerVideoUrl := wizer_video_resolver.GetWizerVideoByCWE(alert.vulnId)
 //
 //	open_github_issue_by_app.OpenGithubIssueByApp(
 //		appID, privateKeyPath, installationIdFloat, repoFullNameStr, alert.description, wizerVideoUrl,

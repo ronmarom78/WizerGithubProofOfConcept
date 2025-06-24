@@ -2,6 +2,7 @@ package github_client
 
 import (
 	"WizerGithubProofOfConcept/github_model"
+	"bytes"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
@@ -150,6 +151,44 @@ func GetInstallationToken(installationID float64) string {
 		log.Fatalf("error parsing token response: %v", err)
 	}
 	return result.Token
+}
+
+func PostComment(repoFullName, installationToken string, prNumber int, message string) (int64, error) {
+	url := fmt.Sprintf("https://api.github.com/repos/%s/issues/%d/comments", repoFullName, prNumber)
+
+	payload, err := json.Marshal(github_model.CommentBody{Body: message})
+	if err != nil {
+		return 0, err
+	}
+
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(payload))
+	if err != nil {
+		return 0, err
+	}
+	req.Header.Set("Authorization", "Bearer "+installationToken)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Content-Type", "application/json")
+
+	// Send request
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != 201 {
+		log.Fatalf("❌ GitHub API error (%d):\n%s", resp.StatusCode, string(body))
+		return 0, err
+	}
+
+	var comment github_model.CommentResponse
+	if err := json.Unmarshal(body, &comment); err != nil {
+		return 0, err
+	}
+
+	fmt.Printf("✅ Comment posted successfully! Comment ID: %d\n", comment.ID)
+	return comment.ID, nil
 }
 
 func generateJWT(appID int64, key *rsa.PrivateKey) string {
