@@ -1,14 +1,12 @@
 package main
 
 import (
-	"WizerGithubProofOfConcept/github_client"
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -84,55 +82,60 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Received eventType: %s", eventType)
 
 	if eventType == "check_run" {
-		var event CheckRunEvent
-		err = json.NewDecoder(r.Body).Decode(&event)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+		var payload map[string]interface{}
+		if err := json.Unmarshal(body, &payload); err != nil {
+			http.Error(w, "invalid JSON", http.StatusBadRequest)
 			return
 		}
-		if event.CheckRun.Status != "completed" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		if len(event.CheckRun.CheckSuite.PullRequests) == 0 {
-			log.Println("No pull request associated with this check run.")
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		prNumber := event.CheckRun.CheckSuite.PullRequests[0].Number
-
-		installationToken := github_client.GetInstallationToken(event.Installation.ID)
-
-		branchName, err := github_client.GetBranchName(event.Repository.FullName, installationToken, prNumber)
-		if err != nil {
-			log.Println("Error fetching branch name")
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		alerts, err := github_client.FetchAlertsForBranch(event.Repository.FullName, installationToken, branchName)
-		if err != nil {
-			log.Println("Error fetching alerts")
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-
-		for _, alert := range alerts {
-			fmt.Println("------------------------------------------------")
-			fmt.Printf("Severity:    %s\n", alert.Rule.Severity)
-			fmt.Printf("Description: %s\n", alert.Rule.Description)
-			fmt.Printf("Message:     %s\n", alert.Message.Text)
-			if alert.Cve != "" {
-				fmt.Printf("CVE:         %s\n", alert.Cve)
-			}
-			if alert.Cwe != "" {
-				fmt.Printf("CWE:         %s\n", alert.Cwe)
-			}
-			if len(alert.Locations) > 0 {
-				loc := alert.Locations[0]
-				fmt.Printf("File:        %s:%d:%d\n", loc.Path, loc.Start.Line, loc.Start.Column)
-			}
-		}
+		//var event CheckRunEvent
+		//err = json.NewDecoder(r.Body).Decode(&event)
+		//if err != nil {
+		//	http.Error(w, err.Error(), http.StatusInternalServerError)
+		//	return
+		//}
+		//if event.CheckRun.Status != "completed" {
+		//	w.WriteHeader(http.StatusOK)
+		//	return
+		//}
+		//if len(event.CheckRun.CheckSuite.PullRequests) == 0 {
+		//	log.Println("No pull request associated with this check run.")
+		//	w.WriteHeader(http.StatusOK)
+		//	return
+		//}
+		//prNumber := event.CheckRun.CheckSuite.PullRequests[0].Number
+		//
+		//installationToken := github_client.GetInstallationToken(event.Installation.ID)
+		//
+		//branchName, err := github_client.GetBranchName(event.Repository.FullName, installationToken, prNumber)
+		//if err != nil {
+		//	log.Println("Error fetching branch name")
+		//	w.WriteHeader(http.StatusOK)
+		//	return
+		//}
+		//
+		//alerts, err := github_client.FetchAlertsForBranch(event.Repository.FullName, installationToken, branchName)
+		//if err != nil {
+		//	log.Println("Error fetching alerts")
+		//	w.WriteHeader(http.StatusOK)
+		//	return
+		//}
+		//
+		//for _, alert := range alerts {
+		//	fmt.Println("------------------------------------------------")
+		//	fmt.Printf("Severity:    %s\n", alert.Rule.Severity)
+		//	fmt.Printf("Description: %s\n", alert.Rule.Description)
+		//	fmt.Printf("Message:     %s\n", alert.Message.Text)
+		//	if alert.Cve != "" {
+		//		fmt.Printf("CVE:         %s\n", alert.Cve)
+		//	}
+		//	if alert.Cwe != "" {
+		//		fmt.Printf("CWE:         %s\n", alert.Cwe)
+		//	}
+		//	if len(alert.Locations) > 0 {
+		//		loc := alert.Locations[0]
+		//		fmt.Printf("File:        %s:%d:%d\n", loc.Path, loc.Start.Line, loc.Start.Column)
+		//	}
+		//}
 
 		w.WriteHeader(http.StatusOK)
 		return
