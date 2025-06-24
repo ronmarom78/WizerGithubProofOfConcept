@@ -43,7 +43,7 @@ func FetchAlertsForBranch(repoFullName, installationToken string, branchName str
 		return nil, err
 	}
 
-	var data map[string]interface{}
+	var data []interface{}
 	if err := json.Unmarshal(body, &data); err != nil {
 		fmt.Println("Unmarshal error:", err)
 		return nil, err
