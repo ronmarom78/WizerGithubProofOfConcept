@@ -85,7 +85,8 @@ func handleWebhook(w http.ResponseWriter, r *http.Request) {
 
 	if eventType == "check_run" {
 		var event CheckRunEvent
-		if err := json.NewDecoder(r.Body).Decode(&event); err != nil {
+		err = json.NewDecoder(r.Body).Decode(&event)
+		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
